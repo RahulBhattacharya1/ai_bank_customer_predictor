@@ -3,12 +3,36 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# --- Load trained pipeline (uploaded to repo root) ---
+from pathlib import Path
+import joblib
+import streamlit as st
+
 @st.cache_resource
 def load_pipeline():
-    return joblib.load("subscription_pipeline.joblib")
+    root = Path(__file__).parent
+    candidates = [
+        root / "models" / "subscription_pipeline.joblib",  # preferred
+        root / "subscription_pipeline.joblib",             # fallback (root)
+    ]
+    for p in candidates:
+        if p.exists():
+            try:
+                return joblib.load(p)
+            except Exception as e:
+                st.error(f"Found model at {p}, but failed to load: {e}")
+                st.stop()
+
+    # If we get here, nothing was found. Show what *is* in the workspace to help debug.
+    found_joblibs = list(root.rglob("*.joblib"))
+    st.error(
+        "Model file not found. Expected `models/subscription_pipeline.joblib`.\n\n"
+        f"Detected joblib files: {found_joblibs if found_joblibs else 'None'}"
+    )
+    st.info("Fix: Upload `subscription_pipeline.joblib` into a `models/` folder at your repo root.")
+    st.stop()
 
 pipe = load_pipeline()
+
 
 st.title("Customer Subscription Predictor")
 st.write("Predict the probability that a customer will subscribe before contacting them.")
